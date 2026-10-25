@@ -5,7 +5,8 @@ import { revalidatePath } from "next/cache";
 import { randomUUID } from "node:crypto";
 import { CampaignStatus } from "@prisma/client";
 import { db } from "@/lib/db";
-import { loginAdmin, logoutAdmin, requireAdmin } from "@/lib/auth";
+import { loginAdmin, logoutAdmin } from "@/lib/auth";
+import { requireAdmin } from "@/lib/admin-auth";
 import { slugify } from "@/lib/format";
 import { deleteCampaignImage, uploadCampaignImage } from "@/lib/supabase/storage-admin";
 
@@ -54,12 +55,13 @@ export async function login(fd: FormData) {
 }
 
 export async function logout() {
+  await requireAdmin({ onUnauthorized: "interrupt" });
   await logoutAdmin();
   redirect("/admin/login");
 }
 
 export async function createCampaign(fd: FormData) {
-  await requireAdmin();
+  await requireAdmin({ onUnauthorized: "interrupt" });
   let campaignId: string | undefined;
   let imageUrl: string | undefined;
   try {
@@ -99,7 +101,7 @@ export async function createCampaign(fd: FormData) {
 }
 
 export async function updateCampaignImage(campaignId: string, fd: FormData) {
-  await requireAdmin();
+  await requireAdmin({ onUnauthorized: "interrupt" });
   let newImageUrl: string | undefined;
   try {
     const image = getCampaignImage(fd);
@@ -146,7 +148,7 @@ export async function updateCampaignImage(campaignId: string, fd: FormData) {
 }
 
 export async function setStatus(fd: FormData) {
-  await requireAdmin();
+  await requireAdmin({ onUnauthorized: "interrupt" });
   const status = String(fd.get("status")) as CampaignStatus;
   if (!Object.values(CampaignStatus).includes(status)) throw new Error("Status inválido.");
   const id = String(fd.get("id"));
@@ -163,7 +165,7 @@ export async function setStatus(fd: FormData) {
 }
 
 export async function confirmOrder(orderId: string): Promise<{ ok: true } | { ok: false; error: string }> {
-  await requireAdmin();
+  await requireAdmin({ onUnauthorized: "interrupt" });
 
   const result = await db.$transaction(async (tx) => {
     const orderRef = await tx.order.findUnique({
@@ -224,7 +226,7 @@ export async function confirmOrder(orderId: string): Promise<{ ok: true } | { ok
 export async function rejectAwaitingOrder(
   orderId: string,
 ): Promise<{ ok: true } | { ok: false; error: string }> {
-  await requireAdmin();
+  await requireAdmin({ onUnauthorized: "interrupt" });
 
   const result = await db.$transaction(async (tx) => {
     const orderRef = await tx.order.findUnique({

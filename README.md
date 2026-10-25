@@ -48,12 +48,17 @@ MVP de rifas online com área pública para compradores, painel administrativo e
 
 ## Segurança
 
+- Toda página admin, função de acesso a dados e Server Action administrativa valida a sessão assinada no servidor antes de acessar ou alterar dados; a action de login é pública por definição.
+- A autorização do layout e do middleware é somente defesa adicional; páginas e endpoints validam sua própria sessão. APIs administrativas negam requisições sem sessão com HTTP 401 e sem corpo de dados.
 - Server Actions e rotas administrativas verificam a sessão no servidor.
+- As páginas de pedidos consultam somente registros associados ao usuário autenticado; telas públicas não incluem telefone ou outros dados de contato de compradores.
 - `SUPABASE_SERVICE_ROLE_KEY` é usada apenas no servidor para uploads no Storage.
 - Upload valida MIME e tamanho (JPG, PNG e WebP, até 5 MB) no cliente e servidor.
 - `.env`, diretórios gerados, backups e arquivos ZIP são ignorados pelo Git.
 - Scripts de banco exigem `ALLOW_DB_SCRIPTS=true`, recusam `NODE_ENV=production` e comparam `DATABASE_URL` com `PRODUCTION_DB_HOST`.
 - Use bancos de desenvolvimento e produção separados. Nunca rode scripts de teste contra a produção.
+
+Para verificar as rotas administrativas sem cookie, inicie o app e execute `npm run test:admin-access` com `BASE_URL` e `ADMIN_CAMPAIGN_ID` definidos. `ADMIN_ACCESS_TEST_SENSITIVE_VALUES` pode conter nomes, telefones e IDs de teste separados por `|` para validar que esses valores não aparecem nas respostas.
 
 ## Estrutura
 

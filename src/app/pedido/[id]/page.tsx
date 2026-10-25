@@ -15,11 +15,11 @@ export default async function OrderPage({ params }: { params: Promise<{ id: stri
   const supabase = await createServerSupabaseClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) notFound();
-  const order = await db.order.findUnique({
-    where: { id: (await params).id },
+  const order = await db.order.findFirst({
+    where: { id: (await params).id, userId: user.id },
     include: { campaign: true, tickets: { orderBy: { number: "asc" } } },
   });
-  if (!order || order.userId !== user.id) notFound();
+  if (!order) notFound();
 
   const now = new Date();
   const expired = (order.status === "PENDING" && order.expiresAt <= now)

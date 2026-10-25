@@ -1,5 +1,6 @@
 import Link from "next/link";
-import { db } from "@/lib/db";
+import { requireAdmin } from "@/lib/admin-auth";
+import { getAdminCampaigns } from "@/lib/admin-data";
 import { brl } from "@/lib/format";
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
@@ -10,7 +11,8 @@ export const dynamic = "force-dynamic";
 const STATUS = { DRAFT: "Rascunho", ACTIVE: "Aberta", CLOSED: "Encerrada" } as const;
 
 export default async function AdminHome() {
-  const campaigns = await db.campaign.findMany({ orderBy: { createdAt: "desc" } });
+  await requireAdmin();
+  const campaigns = await getAdminCampaigns();
 
   return (
     <div className="space-y-8">

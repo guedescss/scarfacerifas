@@ -1,5 +1,6 @@
 import { notFound } from "next/navigation";
-import { db } from "@/lib/db";
+import { requireAdmin } from "@/lib/admin-auth";
+import { getAdminCampaign } from "@/lib/admin-data";
 import { brl } from "@/lib/format";
 import { setStatus } from "../../../actions";
 import { Badge } from "@/components/ui/badge";
@@ -23,14 +24,9 @@ function remainingTime(expiresAt: Date, now: Date) {
 }
 
 export default async function AdminCampaign({ params }: { params: Promise<{ id: string }> }) {
+  await requireAdmin();
   const { id } = await params;
-  const c = await db.campaign.findUnique({
-    where: { id },
-    include: {
-      winnerUser: true,
-      orders: { orderBy: { createdAt: "desc" }, include: { user: true, _count: { select: { tickets: true } } } },
-    },
-  });
+  const c = await getAdminCampaign(id);
   if (!c) notFound();
 
   const paid = c.orders.filter((o) => o.status === "PAID");

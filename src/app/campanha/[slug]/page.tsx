@@ -40,7 +40,10 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 
 export default async function CampaignPage({ params }: Props) {
   const { slug } = await params;
-  const c = await db.campaign.findUnique({ where: { slug }, include: { winnerUser: true } });
+  const c = await db.campaign.findUnique({
+    where: { slug },
+    include: { winnerUser: { select: { name: true } } },
+  });
   if (!c || c.status === "DRAFT") notFound();
 
   const sold = (await takenNumbers(c.id)).size;
@@ -64,7 +67,7 @@ export default async function CampaignPage({ params }: Props) {
     c.status === "CLOSED" && c.winnerNumber !== null && !c.winnerUser
       ? await db.ticket.findUnique({
           where: { campaignId_number: { campaignId: c.id, number: c.winnerNumber } },
-          include: { order: { include: { user: true } } },
+          select: { order: { select: { user: { select: { name: true } } } } },
         })
       : null;
 
