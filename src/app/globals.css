@@ -1,0 +1,184 @@
+@import "tailwindcss";
+
+@theme inline {
+  --font-sans: var(--font-grotesk), ui-sans-serif, system-ui, sans-serif;
+  --font-display: var(--font-bebas), Impact, sans-serif;
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-gold: var(--gold);
+  --color-gold-light: var(--gold-light);
+  --color-gold-dark: var(--gold-dark);
+}
+
+:root {
+  color-scheme: dark;
+  --background: #000000;
+  --foreground: #ffffff;
+  --card: #0a0a0a;
+  --card-foreground: #ffffff;
+  --popover: #0a0a0a;
+  --popover-foreground: #ffffff;
+  --primary: #d4af37;
+  --primary-foreground: #000000;
+  --secondary: #18181b;
+  --secondary-foreground: #ffffff;
+  --muted: #18181b;
+  --muted-foreground: #a1a1aa;
+  --accent: #18181b;
+  --accent-foreground: #ffffff;
+  --destructive: #ef4444;
+  --border: rgba(212, 175, 55, 0.2);
+  --input: rgba(212, 175, 55, 0.2);
+  --ring: #d4af37;
+  --gold: #d4af37;
+  --gold-light: #f2d98d;
+  --gold-dark: #b8962e;
+  --radius: 0.75rem;
+}
+
+* {
+  border-color: var(--border);
+}
+
+html {
+  min-width: 320px;
+  background: var(--background);
+}
+
+body {
+  min-width: 320px;
+  background: var(--background);
+  color: var(--foreground);
+}
+
+.cursor-glow {
+  position: fixed;
+  top: 0;
+  left: 0;
+  z-index: 40;
+  width: 240px;
+  height: 240px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgb(212 175 55 / 12%) 0%, rgb(212 175 55 / 5%) 38%, transparent 72%);
+  filter: blur(14px);
+  opacity: 0;
+  pointer-events: none;
+  transform: translate3d(-300px, -300px, 0) translate(-50%, -50%);
+  transition: transform 110ms cubic-bezier(0.2, 0.75, 0.3, 1), opacity 180ms ease-out;
+  will-change: transform, opacity;
+}
+
+a {
+  transition: color 300ms ease-out, text-decoration-color 300ms ease-out;
+}
+
+.nav-underline {
+  position: relative;
+  text-decoration: none;
+}
+
+.nav-underline::after {
+  position: absolute;
+  right: 0;
+  bottom: -0.25rem;
+  left: 0;
+  height: 1px;
+  background: var(--gold);
+  content: "";
+  transform: scaleX(0);
+  transform-origin: left;
+  transition: transform 300ms ease-out;
+}
+
+.nav-underline:hover::after,
+.nav-underline[aria-current="page"]::after {
+  transform: scaleX(1);
+}
+
+::selection {
+  background: var(--gold);
+  color: #000;
+}
+
+.sheet-fade-in[data-state="open"] {
+  animation: sheet-fade-in 180ms ease-out;
+}
+
+.sheet-fade-out[data-state="closed"] {
+  animation: sheet-fade-out 160ms ease-in;
+}
+
+.sheet-slide-in[data-state="open"] {
+  animation: sheet-slide-in 220ms ease-out;
+}
+
+.sheet-slide-out[data-state="closed"] {
+  animation: sheet-slide-out 180ms ease-in;
+}
+
+@keyframes sheet-fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes sheet-fade-out {
+  from { opacity: 1; }
+  to { opacity: 0; }
+}
+
+@keyframes sheet-slide-in {
+  from { transform: translateX(100%); }
+  to { transform: translateX(0); }
+}
+
+@keyframes sheet-slide-out {
+  from { transform: translateX(0); }
+  to { transform: translateX(100%); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+  }
+
+  .sheet-fade-in,
+  .sheet-fade-out,
+  .sheet-slide-in,
+  .sheet-slide-out {
+    animation-duration: 1ms !important;
+  }
+
+  a,
+  .nav-underline::after,
+  .cursor-glow {
+    transition: none !important;
+  }
+
+  .cursor-glow {
+    display: none;
+  }
+}
+
+@media (hover: none), (pointer: coarse) {
+  .cursor-glow {
+    display: none;
+  }
+}

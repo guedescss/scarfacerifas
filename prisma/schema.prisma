@@ -1,0 +1,79 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum CampaignStatus {
+  DRAFT
+  ACTIVE
+  CLOSED
+}
+
+enum OrderStatus {
+  PENDING
+  PAID
+}
+
+model Campaign {
+  id           String         @id @default(cuid())
+  slug         String         @unique
+  title        String
+  prize        String
+  imageUrl     String?
+  rules        String?
+  ticketPrice  Decimal        @db.Decimal(10, 2)
+  totalTickets Int            @default(10000)
+  status       CampaignStatus @default(DRAFT)
+  // resultado: preenchido pelo admin ao encerrar
+  winnerNumber Int?
+  drawSource   String?
+  winnerUserId String?
+  drawnAt      DateTime?
+  createdAt    DateTime       @default(now())
+  winnerUser   Profile?       @relation("CampaignWinner", fields: [winnerUserId], references: [id], onDelete: SetNull)
+  orders       Order[]
+  tickets      Ticket[]
+
+  @@index([winnerUserId])
+}
+
+model Profile {
+  id        String   @id
+  name      String
+  phone     String
+  createdAt DateTime @default(now())
+  orders    Order[]
+  wonCampaigns Campaign[] @relation("CampaignWinner")
+}
+
+model Order {
+  id         String      @id @default(cuid())
+  campaignId String
+  userId     String
+  total      Decimal     @db.Decimal(10, 2)
+  status     OrderStatus @default(PENDING)
+  expiresAt  DateTime
+  paidAt     DateTime?
+  createdAt  DateTime    @default(now())
+  campaign   Campaign    @relation(fields: [campaignId], references: [id])
+  user       Profile     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tickets    Ticket[]
+
+  @@index([campaignId, status])
+  @@index([userId])
+}
+
+// Só existe linha para número reservado ou vendido. O unique impede venda dupla.
+model Ticket {
+  id         String   @id @default(cuid())
+  campaignId String
+  orderId    String
+  number     Int
+  campaign   Campaign @relation(fields: [campaignId], references: [id])
+  order      Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  @@unique([campaignId, number])
+}
