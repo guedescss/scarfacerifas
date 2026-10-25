@@ -8,9 +8,19 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { DrawPanel } from "./draw-panel";
 import { ConfirmOrderButton } from "./confirm-order-button";
+import { RejectOrderButton } from "./reject-order-button";
 import { CampaignImageForm } from "../../campaign-form";
 
 export const dynamic = "force-dynamic";
+
+function remainingTime(expiresAt: Date, now: Date) {
+  const remaining = expiresAt.getTime() - now.getTime();
+  if (remaining <= 0) return "Prazo expirado";
+  const minutes = Math.ceil(remaining / 60_000);
+  const hours = Math.floor(minutes / 60);
+  const restMinutes = minutes % 60;
+  return hours > 0 ? `${hours}h ${restMinutes}min restantes` : `${restMinutes}min restantes`;
+}
 
 export default async function AdminCampaign({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -25,9 +35,19 @@ export default async function AdminCampaign({ params }: { params: Promise<{ id: 
 
   const paid = c.orders.filter((o) => o.status === "PAID");
   const paidQty = paid.reduce((s, o) => s + o._count.tickets, 0);
+  const now = new Date();
   const pendingQty = c.orders
-    .filter((o) => o.status === "PENDING" && o.expiresAt > new Date())
+    .filter((o) =>
+      (o.status === "PENDING" && o.expiresAt > now)
+      || (o.status === "AWAITING_CONFIRMATION"
+        && o.verificationExpiresAt !== null
+        && o.verificationExpiresAt > now),
+    )
     .reduce((s, o) => s + o._count.tickets, 0);
+  const orderedOrders = [...c.orders].sort((a, b) =>
+    Number(b.status === "AWAITING_CONFIRMATION") - Number(a.status === "AWAITING_CONFIRMATION")
+    || b.createdAt.getTime() - a.createdAt.getTime(),
+  );
   const revenue = paid.reduce((s, o) => s + Number(o.total.toString()), 0);
 
   const next = c.status === "DRAFT" ? ["ACTIVE", "Publicar"] : c.status === "ACTIVE" ? ["CLOSED", "Encerrar vendas"] : ["ACTIVE", "Reabrir"];
@@ -71,13 +91,21 @@ export default async function AdminCampaign({ params }: { params: Promise<{ id: 
               </TableRow>
             </TableHeader>
             <TableBody>
-              {c.orders.map((o) => {
-                const expired = o.status === "PENDING" && o.expiresAt < new Date();
+              {orderedOrders.map((o) => {
+                const verificationExpired = o.status === "AWAITING_CONFIRMATION"
+                  && (!o.verificationExpiresAt || o.verificationExpiresAt <= now);
+                const expired = (o.status === "PENDING" && o.expiresAt <= now) || verificationExpired;
+                const awaiting = o.status === "AWAITING_CONFIRMATION" && !verificationExpired;
                 return (
-                  <TableRow key={o.id}>
+                  <TableRow key={o.id} className={awaiting ? "bg-green-950/40 ring-1 ring-inset ring-green-500/40" : undefined}>
                     <TableCell className="min-w-36">
                       <p className="break-words font-medium">{o.user.name}</p>
                       <p className="break-all text-xs text-muted-foreground">{o.user.phone}</p>
+                      {awaiting && (
+                        <p className="text-xs font-semibold text-green-400">
+                          {remainingTime(o.verificationExpiresAt!, now)}
+                        </p>
+                      )}
                     </TableCell>
                     <TableCell className="whitespace-nowrap">
                       <span>{o._count.tickets} números</span>
@@ -86,11 +114,18 @@ export default async function AdminCampaign({ params }: { params: Promise<{ id: 
                     <TableCell>
                       {o.status === "PAID"
                         ? <Badge variant="success">Pago</Badge>
+                        : awaiting
+                          ? <Badge className="border-green-500/40 bg-green-950 text-green-300">Aguardando confirmação</Badge>
                         : <Badge variant={expired ? "destructive" : "warning"}>{expired ? "Expirado" : "Pendente"}</Badge>}
                     </TableCell>
                     <TableCell className="text-right">
                       {o.status === "PAID" ? (
                         <span className="text-sm text-[#22c55e]">Pago</span>
+                      ) : awaiting || verificationExpired ? (
+                        <div className="flex flex-col justify-end gap-2 sm:flex-row">
+                          {awaiting && <ConfirmOrderButton orderId={o.id} />}
+                          <RejectOrderButton orderId={o.id} />
+                        </div>
                       ) : (
                         <div className="flex justify-end">
                           <ConfirmOrderButton orderId={o.id} />

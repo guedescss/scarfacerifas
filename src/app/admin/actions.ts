@@ -181,14 +181,19 @@ export async function confirmOrder(orderId: string): Promise<{ ok: true } | { ok
       select: {
         status: true,
         expiresAt: true,
+        verificationExpiresAt: true,
         campaign: { select: { status: true, drawnAt: true } },
       },
     });
     if (!order) return { ok: false as const, error: "Pedido não encontrado ou cancelado." };
-    if (order.status !== "PENDING") {
+    if (order.status !== "PENDING" && order.status !== "AWAITING_CONFIRMATION") {
       return { ok: false as const, error: "Este pedido não está mais pendente." };
     }
-    if (order.expiresAt <= new Date()) {
+    const now = new Date();
+    const verificationExpired = order.status === "AWAITING_CONFIRMATION"
+      && (!order.verificationExpiresAt || order.verificationExpiresAt <= now);
+    const reservationExpired = order.status === "PENDING" && order.expiresAt <= now;
+    if (verificationExpired || reservationExpired) {
       return { ok: false as const, error: "A reserva deste pedido expirou." };
     }
     if (order.campaign.drawnAt || order.campaign.status === "CLOSED") {
@@ -199,13 +204,48 @@ export async function confirmOrder(orderId: string): Promise<{ ok: true } | { ok
     }
 
     const updated = await tx.order.updateMany({
-      where: { id: orderId, status: "PENDING", expiresAt: { gt: new Date() } },
-      data: { status: "PAID", paidAt: new Date() },
+      where: order.status === "PENDING"
+        ? { id: orderId, status: "PENDING", expiresAt: { gt: now } }
+        : { id: orderId, status: "AWAITING_CONFIRMATION", verificationExpiresAt: { gt: now } },
+      data: { status: "PAID", paidAt: now },
     });
     if (updated.count !== 1) {
       return { ok: false as const, error: "O pedido não está mais pendente ou a reserva expirou." };
     }
 
+    return { ok: true as const };
+  }, { maxWait: 10_000, timeout: 30_000 });
+
+  if (!result.ok) return result;
+  revalidatePath("/", "layout");
+  return result;
+}
+
+export async function rejectAwaitingOrder(
+  orderId: string,
+): Promise<{ ok: true } | { ok: false; error: string }> {
+  await requireAdmin();
+
+  const result = await db.$transaction(async (tx) => {
+    const orderRef = await tx.order.findUnique({
+      where: { id: orderId },
+      select: { campaignId: true },
+    });
+    if (!orderRef) return { ok: false as const, error: "Pedido não encontrado." };
+
+    await tx.$queryRaw<Array<{ id: string }>>`
+      SELECT "id" FROM "Campaign" WHERE "id" = ${orderRef.campaignId} FOR UPDATE
+    `;
+
+    const deleted = await tx.order.deleteMany({
+      where: { id: orderId, status: "AWAITING_CONFIRMATION" },
+    });
+    if (deleted.count !== 1) {
+      return {
+        ok: false as const,
+        error: "Este pedido não está mais aguardando confirmação.",
+      };
+    }
     return { ok: true as const };
   }, { maxWait: 10_000, timeout: 30_000 });
 

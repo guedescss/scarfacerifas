@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 import { CancelOrderButton } from "../cancel-order-button";
+import { ClaimPaymentButton } from "../claim-payment-button";
 
 export const dynamic = "force-dynamic";
 export const metadata = { title: "Seu pedido" };
@@ -20,11 +21,16 @@ export default async function OrderPage({ params }: { params: Promise<{ id: stri
   });
   if (!order || order.userId !== user.id) notFound();
 
-  const expired = order.status === "PENDING" && order.expiresAt < new Date();
+  const now = new Date();
+  const expired = (order.status === "PENDING" && order.expiresAt <= now)
+    || (order.status === "AWAITING_CONFIRMATION"
+      && (!order.verificationExpiresAt || order.verificationExpiresAt <= now));
   const wa = process.env.WHATSAPP;
   const waText = encodeURIComponent(`Olá! Paguei o pedido ${order.id} (${order.campaign.title}). Segue o comprovante.`);
   const status = order.status === "PAID"
     ? { label: "Pagamento confirmado", variant: "success" as const }
+    : order.status === "AWAITING_CONFIRMATION" && !expired
+    ? { label: "Aguardando confirmação do pagamento", variant: "warning" as const }
     : expired
       ? { label: "Reserva expirada", variant: "destructive" as const }
       : { label: "Aguardando pagamento", variant: "warning" as const };
@@ -50,6 +56,18 @@ export default async function OrderPage({ params }: { params: Promise<{ id: stri
         </CardContent>
       </Card>
 
+      {order.status === "AWAITING_CONFIRMATION" && !expired && (
+        <Card>
+          <CardContent className="space-y-2 p-5">
+            <p className="font-medium text-gold">Aguardando confirmação do pagamento</p>
+            <p className="text-sm text-muted-foreground">
+              Seus números continuam reservados até {order.verificationExpiresAt?.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}.
+              Envie o comprovante para confirmarmos o Pix.
+            </p>
+          </CardContent>
+        </Card>
+      )}
+
       {order.status === "PENDING" && !expired && (
         <Card>
           <CardHeader className="pb-3">
@@ -73,6 +91,7 @@ export default async function OrderPage({ params }: { params: Promise<{ id: stri
                   </a>
                 </Button>
               )}
+              <ClaimPaymentButton orderId={order.id} />
               <CancelOrderButton orderId={order.id} />
             </div>
           </CardContent>

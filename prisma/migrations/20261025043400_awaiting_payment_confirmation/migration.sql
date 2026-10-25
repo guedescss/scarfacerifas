@@ -1,0 +1,5 @@
+ALTER TYPE "OrderStatus" ADD VALUE 'AWAITING_CONFIRMATION';
+
+ALTER TABLE "Order"
+ADD COLUMN "paymentClaimedAt" TIMESTAMP(3),
+ADD COLUMN "verificationExpiresAt" TIMESTAMP(3);

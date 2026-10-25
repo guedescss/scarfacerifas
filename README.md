@@ -12,6 +12,7 @@ MVP de rifas online com área pública para compradores, painel administrativo e
 - Exibe detalhes, progresso, regulamento e resultado do sorteio.
 - Cadastro e login de compradores por Google ou e-mail/senha.
 - Reserva números por tempo limitado, com expiração e cancelamento de pedidos pendentes.
+- Após enviar o Pix, o comprador pode marcar “Já paguei” para manter os números reservados enquanto o pagamento aguarda confirmação manual.
 - Permite que compradores autenticados consultem seus próprios pedidos em “Meus números”.
 - Exibe chave Pix e contato de WhatsApp para pagamento manual.
 
@@ -20,6 +21,7 @@ MVP de rifas online com área pública para compradores, painel administrativo e
 - Login administrativo protegido por sessão assinada.
 - Cria campanhas e permite atualizar a imagem da campanha.
 - Mostra pedidos e permite confirmar manualmente pagamentos.
+- Destaca pedidos aguardando confirmação para o admin confirmar ou rejeitar/liberar.
 - Permite publicar, encerrar e reabrir campanhas, respeitando as regras de campanha sorteada.
 - Apresenta números pagos e pendentes, exportação CSV e sorteio com modo de apresentação.
 
@@ -28,6 +30,8 @@ MVP de rifas online com área pública para compradores, painel administrativo e
 - Regras sensíveis — reserva, confirmação, cancelamento, upload e sorteio — são executadas no servidor.
 - Reservas criam pedidos `PENDING` e tickets; a expiração libera os números para novas compras.
 - O pagamento é manual via Pix no MVP.
+- Reservas `PENDING` continuam expirando em 30 minutos. Ao informar que já pagou, o pedido passa para `AWAITING_CONFIRMATION` e os números ficam reservados por até 12 horas para confirmação manual.
+- Cada comprador pode ter no máximo dois pedidos ativos aguardando confirmação. O prazo é configurado por `VERIFICATION_WINDOW_HOURS` em `src/lib/tickets.ts`.
 - Imagens são armazenadas no bucket público `campanhas` do Supabase Storage; o banco guarda a URL.
 - `DATABASE_URL` é usada pela aplicação e `DIRECT_URL` pelo Prisma Migrate.
 - O projeto usa bloqueio de linha da campanha para coordenar reservas, confirmações e sorteio.
@@ -119,6 +123,8 @@ npx prisma migrate deploy
 
 Não use `prisma migrate reset` nem `db push --force-reset` em produção. Faça backup antes de operações de banco importantes.
 
+Teste migrations com `DATABASE_URL` e `DIRECT_URL` de um banco de desenvolvimento separado; nunca execute `prisma migrate dev` contra produção. A migration `20261025043400_awaiting_payment_confirmation` adiciona o estado de confirmação e seus prazos sem resetar nem apagar dados existentes.
+
 O seed e o teste de concorrência requerem liberação explícita e uma conexão de desenvolvimento:
 
 ```powershell
@@ -143,7 +149,7 @@ As migrations não criam campanhas. Se o banco estiver vazio, crie a campanha pe
 
 ## Backups
 
-As migrations versionam a estrutura, não os dados. Faça backups do banco antes de migrations, sorteios e operações importantes. Armazene-os fora do repositório e confira que podem ser restaurados em um ambiente de teste.
+As migrations versionam a estrutura, não os dados. Faça backups do banco antes de migrations, sorteios e operações importantes. Armazene-os fora do repositório e confira que podem ser restaurados em um ambiente de teste. Pedidos de confirmação que ultrapassarem as 12 horas deixam de ocupar números e são removidos junto dos pedidos expirados na próxima reserva da campanha.
 
 ## Próximos passos
 

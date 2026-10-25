@@ -32,6 +32,16 @@ export default async function MyNumbers({
   const now = new Date();
   const groups = [
     {
+      title: "Aguardando confirmação",
+      orders: orders.filter((order) =>
+        order.status === "AWAITING_CONFIRMATION"
+        && order.verificationExpiresAt !== null
+        && order.verificationExpiresAt >= now,
+      ),
+      label: "Aguardando confirmação do pagamento",
+      variant: "warning" as const,
+    },
+    {
       title: "Aguardando pagamento",
       orders: orders.filter((order) => order.status === "PENDING" && order.expiresAt >= now),
       label: "Pendente",
@@ -45,7 +55,11 @@ export default async function MyNumbers({
     },
     {
       title: "Expirados",
-      orders: orders.filter((order) => order.status === "PENDING" && order.expiresAt < now),
+      orders: orders.filter((order) =>
+        (order.status === "PENDING" && order.expiresAt < now)
+        || (order.status === "AWAITING_CONFIRMATION"
+          && (!order.verificationExpiresAt || order.verificationExpiresAt < now)),
+      ),
       label: "Expirado",
       variant: "destructive" as const,
     },

@@ -14,6 +14,7 @@ enum CampaignStatus {
 
 enum OrderStatus {
   PENDING
+  AWAITING_CONFIRMATION
   PAID
 }
 
@@ -41,26 +42,28 @@ model Campaign {
 }
 
 model Profile {
-  id        String   @id
-  name      String
-  phone     String
-  createdAt DateTime @default(now())
-  orders    Order[]
+  id           String     @id
+  name         String
+  phone        String
+  createdAt    DateTime   @default(now())
+  orders       Order[]
   wonCampaigns Campaign[] @relation("CampaignWinner")
 }
 
 model Order {
-  id         String      @id @default(cuid())
-  campaignId String
-  userId     String
-  total      Decimal     @db.Decimal(10, 2)
-  status     OrderStatus @default(PENDING)
-  expiresAt  DateTime
-  paidAt     DateTime?
-  createdAt  DateTime    @default(now())
-  campaign   Campaign    @relation(fields: [campaignId], references: [id])
-  user       Profile     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  tickets    Ticket[]
+  id                    String      @id @default(cuid())
+  campaignId            String
+  userId                String
+  total                 Decimal     @db.Decimal(10, 2)
+  status                OrderStatus @default(PENDING)
+  expiresAt             DateTime
+  paymentClaimedAt      DateTime?
+  verificationExpiresAt DateTime?
+  paidAt                DateTime?
+  createdAt             DateTime    @default(now())
+  campaign              Campaign    @relation(fields: [campaignId], references: [id])
+  user                  Profile     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tickets               Ticket[]
 
   @@index([campaignId, status])
   @@index([userId])

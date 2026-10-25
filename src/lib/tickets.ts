@@ -2,16 +2,24 @@ import { Prisma } from "@prisma/client";
 import { db } from "./db";
 
 export const RESERVE_MINUTES = 30;
+export const VERIFICATION_WINDOW_HOURS = 12;
 
 /** Números ocupados = pagos + reservas ainda dentro do prazo. */
 export async function takenNumbers(
   campaignId: string,
   client: Pick<Prisma.TransactionClient, "ticket"> = db,
 ) {
+  const now = new Date();
   const rows = await client.ticket.findMany({
     where: {
       campaignId,
-      order: { OR: [{ status: "PAID" }, { status: "PENDING", expiresAt: { gt: new Date() } }] },
+      order: {
+        OR: [
+          { status: "PAID" },
+          { status: "PENDING", expiresAt: { gt: now } },
+          { status: "AWAITING_CONFIRMATION", verificationExpiresAt: { gt: now } },
+        ],
+      },
     },
     select: { number: true },
   });
@@ -55,8 +63,15 @@ export async function reserveRandom(slug: string, qty: number, userId: string) {
         if (!campaign || campaign.status !== "ACTIVE" || campaign.drawnAt)
           throw new Error("Esta campanha não está aberta.");
 
+        const now = new Date();
         await tx.order.deleteMany({
-          where: { campaignId: campaign.id, status: "PENDING", expiresAt: { lt: new Date() } },
+          where: {
+            campaignId: campaign.id,
+            OR: [
+              { status: "PENDING", expiresAt: { lt: now } },
+              { status: "AWAITING_CONFIRMATION", verificationExpiresAt: { lt: now } },
+            ],
+          },
         });
 
         const numbers = pickRandom(campaign.totalTickets, await takenNumbers(campaign.id, tx), qty);
