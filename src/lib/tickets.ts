@@ -55,6 +55,11 @@ export async function reserveRandom(slug: string, qty: number, userId: string) {
         });
         if (!campaignRef) throw new Error("Esta campanha não está aberta.");
 
+        const profileLock = await tx.$queryRaw<Array<{ id: string }>>`
+          SELECT "id" FROM "Profile" WHERE "id" = ${userId} FOR UPDATE
+        `;
+        if (profileLock.length === 0) throw new Error("Complete seu cadastro antes de reservar números.");
+
         await tx.$queryRaw<Array<{ id: string }>>`
           SELECT "id" FROM "Campaign" WHERE "id" = ${campaignRef.id} FOR UPDATE
         `;
@@ -65,10 +70,22 @@ export async function reserveRandom(slug: string, qty: number, userId: string) {
 
         const now = new Date();
         await tx.order.deleteMany({
+          where: { userId, status: "PENDING", expiresAt: { lte: now } },
+        });
+
+        const openOrder = await tx.order.findFirst({
+          where: { userId, status: "PENDING", expiresAt: { gt: now } },
+          select: { id: true },
+        });
+        if (openOrder) {
+          throw new Error("Você já tem um pedido em aberto. Finalize ou cancele para reservar novos números.");
+        }
+
+        await tx.order.deleteMany({
           where: {
             campaignId: campaign.id,
             OR: [
-              { status: "PENDING", expiresAt: { lt: now } },
+              { status: "PENDING", expiresAt: { lte: now } },
               { status: "AWAITING_CONFIRMATION", verificationExpiresAt: { lt: now } },
             ],
           },

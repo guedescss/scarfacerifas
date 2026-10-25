@@ -1,16 +1,32 @@
 "use client";
 
-import { useActionState, useState } from "react";
+import Link from "next/link";
+import { useActionState, useEffect, useState } from "react";
+import { toast } from "sonner";
 import { createOrder, type FormState } from "./actions";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 
-export function BuyForm({ slug, price, available }: { slug: string; price: number; available: number }) {
+export function BuyForm({
+  slug,
+  price,
+  available,
+  openOrderId,
+}: {
+  slug: string;
+  price: number;
+  available: number;
+  openOrderId: string | null;
+}) {
   const [state, action, pending] = useActionState<FormState, FormData>(createOrder, null);
   const [qty, setQty] = useState(1);
   const total = (Math.max(qty, 0) * price).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
+
+  useEffect(() => {
+    if (state?.error) toast.error(state.error);
+  }, [state]);
 
   return (
     <Card>
@@ -18,7 +34,16 @@ export function BuyForm({ slug, price, available }: { slug: string; price: numbe
         <CardTitle className="font-display text-2xl uppercase tracking-[0.06em] text-gold">Escolha seus números</CardTitle>
       </CardHeader>
       <CardContent>
-        {available > 0 ? (
+        {openOrderId ? (
+          <div className="space-y-3">
+            <p role="status" className="text-sm text-amber-400">
+              Você já tem um pedido em aberto. Finalize ou cancele para reservar novos números.
+            </p>
+            <Button asChild className="w-full">
+              <Link href={`/pedido/${openOrderId}`}>Ver meu pedido em aberto</Link>
+            </Button>
+          </div>
+        ) : available > 0 ? (
           <form action={action} className="space-y-4">
             <input type="hidden" name="slug" value={slug} />
             <div className="space-y-2">

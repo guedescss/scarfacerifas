@@ -29,12 +29,14 @@ MVP de rifas online com área pública para compradores, painel administrativo e
 
 - Regras sensíveis — reserva, confirmação, cancelamento, upload e sorteio — são executadas no servidor.
 - Reservas criam pedidos `PENDING` e tickets; a expiração libera os números para novas compras.
+- Cada comprador pode ter somente um pedido `PENDING` ativo por vez, mesmo entre campanhas; deve pagar, cancelar ou aguardar a expiração antes de reservar novamente. Pedidos `AWAITING_CONFIRMATION` não bloqueiam novas reservas e continuam limitados a dois por comprador.
 - O pagamento é manual via Pix no MVP.
 - Reservas `PENDING` continuam expirando em 30 minutos. Ao informar que já pagou, o pedido passa para `AWAITING_CONFIRMATION` e os números ficam reservados por até 12 horas para confirmação manual.
 - Cada comprador pode ter no máximo dois pedidos ativos aguardando confirmação. O prazo é configurado por `VERIFICATION_WINDOW_HOURS` em `src/lib/tickets.ts`.
 - Imagens são armazenadas no bucket público `campanhas` do Supabase Storage; o banco guarda a URL.
 - `DATABASE_URL` é usada pela aplicação e `DIRECT_URL` pelo Prisma Migrate.
 - O projeto usa bloqueio de linha da campanha para coordenar reservas, confirmações e sorteio.
+- A criação de reservas também bloqueia a linha do perfil do comprador para serializar tentativas simultâneas e garantir o limite de um pedido pendente.
 
 ## Sorteio
 

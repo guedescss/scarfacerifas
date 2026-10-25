@@ -52,6 +52,13 @@ export default async function CampaignPage({ params }: Props) {
   if (user && !profile && c.status === "ACTIVE") {
     redirect(`/completar-cadastro?next=${encodeURIComponent(`/campanha/${c.slug}`)}`);
   }
+  const openOrder = user
+    ? await db.order.findFirst({
+        where: { userId: user.id, status: "PENDING", expiresAt: { gt: new Date() } },
+        select: { id: true },
+        orderBy: { createdAt: "asc" },
+      })
+    : null;
 
   const winnerTicket =
     c.status === "CLOSED" && c.winnerNumber !== null && !c.winnerUser
@@ -103,7 +110,12 @@ export default async function CampaignPage({ params }: Props) {
       </Card>
 
       {c.status === "ACTIVE" && (user ? (
-        <BuyForm slug={c.slug} price={Number(c.ticketPrice.toString())} available={available} />
+        <BuyForm
+          slug={c.slug}
+          price={Number(c.ticketPrice.toString())}
+          available={available}
+          openOrderId={openOrder?.id ?? null}
+        />
       ) : (
         <Card>
           <CardHeader>

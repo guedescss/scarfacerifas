@@ -45,6 +45,7 @@ async function main() {
     const friendlyMessages = new Set([
       "Não há números suficientes disponíveis.",
       "Muita gente comprando ao mesmo tempo. Tente de novo.",
+      "Você já tem um pedido em aberto. Finalize ou cancele para reservar novos números.",
     ]);
     const tickets = successes.length
       ? await db.ticket.findMany({
@@ -55,10 +56,16 @@ async function main() {
     const numbers = tickets.map((ticket) => ticket.number);
     const hasDuplicate = new Set(numbers).size !== numbers.length;
     const occupied = (await ticketsLib.takenNumbers(campaign.id)).size;
+    const pendingCounts = await Promise.all(testProfileIds.map((userId) =>
+      db!.order.count({
+        where: { userId, status: "PENDING", expiresAt: { gt: new Date() } },
+      }),
+    ));
 
     console.log(`Pedidos com sucesso: ${successes.length}`);
     console.log(`Pedidos com falha: ${failures.length}`);
     console.log(`Números ocupados: ${occupied}`);
+    console.log(`Máximo de pedidos pendentes por comprador: ${Math.max(...pendingCounts)}`);
     console.log(`Houve duplicata: ${hasDuplicate ? "sim" : "não"}`);
 
     assert.ok(
@@ -67,6 +74,7 @@ async function main() {
     );
     assert.equal(hasDuplicate, false, "Um número foi reservado em mais de um pedido.");
     assert.ok(occupied <= campaign.totalTickets, "A quantidade ocupada excedeu o total da campanha.");
+    assert.ok(pendingCounts.every((count) => count <= 1), "Um comprador ficou com mais de um pedido pendente.");
   } finally {
     if (campaignId) {
       const cleanup = await db.order.deleteMany({
