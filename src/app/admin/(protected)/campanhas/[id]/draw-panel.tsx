@@ -156,9 +156,6 @@ export function DrawPanel({
                 <p className="text-sm text-muted-foreground">Encerre as vendas antes de realizar o sorteio.</p>
               )}
               <div className="flex flex-wrap gap-3">
-                <Button asChild variant="outline" className="border-gold/40 text-gold">
-                  <a href={`/admin/api/campanhas/${campaignId}/numeros-pagos`}>Exportar números pagos (CSV)</a>
-                </Button>
                 <Button variant="ghost" onClick={() => setCleanMode(true)}>Modo tela limpa</Button>
                 {canDraw && (
                   <AlertDialog open={open} onOpenChange={setOpen}>
